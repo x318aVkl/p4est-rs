@@ -56,19 +56,10 @@ extern "C" fn iter_volume_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_volume_i
 
         let id = cell_data.local_id;
         let gid = cell_data.global_id;
-
-        let tsize = size_of::<T>();
-
         let corners = cell_corners(base_tree, (*info).treeid, (*info).quad);
-
-        let cell_data = if tsize == 0 {
-            None
-        } else {
-            Some(&cell_data.data)
-        };
         
         let cell = Cell {
-            data: cell_data, 
+            data: &cell_data.data, 
             local_id: id as usize, 
             global_id: gid as usize,
             level: (*(*info).quad).level as u8,

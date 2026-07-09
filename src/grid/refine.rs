@@ -21,21 +21,11 @@ extern "C" fn refine_fn<'a, F, T>(_grid: *mut p4est_sys::p4est, treeid: i32, qua
         let cell_data: &CellData<T> = &*((*quad).p.user_data as *mut c_void as *const CellData<T>);
 
         let id = cell_data.local_id;
-
-        let tsize = size_of::<T>();
-
-        let cell_data = if tsize == 0 {
-            None
-        } else {
-            Some(&cell_data.data)
-        };
-
         let tree = &*USER_BASETREE.unwrap();
-
         let corners = cell_corners(tree, treeid, quad);
         
         let cell = Cell {
-            data: cell_data, 
+            data: &cell_data.data, 
             local_id: id as usize, 
             global_id: id as usize,
             level: (*quad).level as u8,

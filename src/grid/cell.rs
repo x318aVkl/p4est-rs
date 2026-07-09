@@ -5,7 +5,7 @@ use p4est_sys::consts::{CELL_CORNERS, DIM};
 
 #[derive(Debug)]
 pub struct Cell<'a, T> { 
-    pub data: Option<&'a T>,
+    pub data: &'a T,
     pub local_id: usize,
     pub global_id: usize,
     pub level: u8,

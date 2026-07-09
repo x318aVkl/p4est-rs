@@ -72,7 +72,7 @@ impl<T> Grid<T> {
 
         let connectivity = unsafe { tree.build_connectivity() };
 
-        let s = size_of::<T>();
+        let s = size_of::<CellData<T>>();
 
         let comm = communicator.as_raw();
 

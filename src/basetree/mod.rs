@@ -2,7 +2,11 @@ use std::{collections::{HashMap, HashSet}, io::BufRead};
 
 use p4est_sys::consts::{CELL_CORNERS, CELL_FACES, DIM};
 
+mod basis;
+use basis::*;
 
+mod ordering;
+use ordering::reorder_raw_vtk_element;
 
 
 
@@ -34,16 +38,29 @@ impl<'a> Element<'a> {
         let elen = self.elem_nodes.len();
         let elen = elen as f64;
         let blen = elen.powf(1.0 / (DIM as f64));
+        let blen = blen.round();
         (blen as u8) - 1
     }
 
     pub fn corners(&self) -> [usize; CELL_CORNERS] {
         let mut corners = [0; CELL_CORNERS];
 
+        let order = self.order();
+        let blen = (order as usize) + 1;
+
         corners[0] = self.elem_nodes[0];
-        corners[1] = self.elem_nodes[1];
-        corners[2] = self.elem_nodes[3];
-        corners[3] = self.elem_nodes[2];
+        corners[1] = self.elem_nodes[blen - 1];
+        corners[2] = self.elem_nodes[(blen*blen) - blen];
+        corners[3] = self.elem_nodes[(blen*blen) - 1];
+
+        #[cfg(feature = "3d")]
+        {
+            let koff = blen*blen*blen - blen*blen;
+            corners[4] = self.elem_nodes[koff];
+            corners[5] = self.elem_nodes[koff + blen - 1];
+            corners[6] = self.elem_nodes[koff + (blen*blen) - blen];
+            corners[7] = self.elem_nodes[koff + (blen*blen) - 1];
+        }
 
         corners
     }
@@ -51,21 +68,23 @@ impl<'a> Element<'a> {
 
     pub fn tree_relative_position_to_global_position(
         &self,
-        norm_pos: [f64; DIM],
+        mut norm_pos: [f64; DIM],
     ) -> [f64; DIM] {
         // norm pos input is between zero and one
 
         // convert input to between -1 and +1
-        for _ in 0..DIM {
-            //norm_pos[i] = 2.0 * norm_pos[i] - 1.0;
+        for i in 0..DIM {
+            norm_pos[i] = 2.0 * norm_pos[i] - 1.0;
         }
-
+        
         // lagrange basis evaluations
         let mut out = [0.0; DIM];
+        let order = self.order() as usize;
         
         for i in 0..self.elem_nodes.len() {
             // add the contribution from this node
-            let li = basis(norm_pos, i);
+            let li = basis(norm_pos, i, order);
+            //println!("{} {:?} {:?} {}", i, self.all_nodes[self.elem_nodes[i]], norm_pos, li);
 
             let node = self.all_nodes[self.elem_nodes[i]];
             for k in 0..DIM {
@@ -89,12 +108,10 @@ impl BaseTree {
                     unique_corners.insert(c);
                 }
             }
-            let unique_corners = unique_corners.into_iter().collect::<Vec<_>>();
-            let mut global_to_corner = HashMap::new();
-
-            for (i, c) in unique_corners.iter().enumerate() {
-                global_to_corner.insert(*c, i);
-            }
+            let mut unique_corners = unique_corners.into_iter().collect::<Vec<_>>();
+            unique_corners.sort();
+            let unique_corners = unique_corners;
+            
 
             #[cfg(feature = "2d")]
             let conn = p4est_sys::p4est_connectivity_new(
@@ -115,13 +132,21 @@ impl BaseTree {
 
             // fill conn->vertices
             // and conn->tree_to_vertex
+            let mut global_to_corner = HashMap::new();
+
             for (i, c) in unique_corners.iter().enumerate() {
                 let c = *c;
 
                 let node = self.nodes[c];
+                global_to_corner.insert(c, i);
 
                 *(*conn).vertices.offset((3 * i + 0) as isize) = node[0];
                 *(*conn).vertices.offset((3 * i + 1) as isize) = node[1];
+
+                #[cfg(feature = "3d")]
+                {
+                    *(*conn).vertices.offset((3 * i + 2) as isize) = node[2];
+                }
             }
 
             for elem in 0..self.element_len() {
@@ -134,7 +159,6 @@ impl BaseTree {
                     *(*conn).tree_to_vertex.offset((CELL_CORNERS * elem + n) as isize) = local_node as i32;
                 }
             }
-
             
             for tree in 0..((*conn).num_trees) as usize {
                 for face in 0..CELL_FACES {
@@ -143,13 +167,11 @@ impl BaseTree {
                 }
             }
 
-
             // check the connectivity is valid
             let ecode = p4est_sys::p4est_connectivity_is_valid(conn);
             if ecode != 1 {
                 panic!("error, connectivity is not valid, code {}", ecode);
             }
-
 
             // complete the connecvitiy
             p4est_sys::p4est_connectivity_complete(conn);
@@ -180,9 +202,7 @@ impl BaseTree {
 
     pub fn from_su2<F>(f: F) -> Result<Self, std::io::Error> where F: BufRead {
 
-        let mut nodes = vec![];
-        let mut elements = vec![];
-        let mut element_starts = vec![0];
+        let mut tree = Self::new();
 
         let mut section = "".to_string();
         for line in f.lines() {
@@ -209,22 +229,27 @@ impl BaseTree {
                 if section == "NELEM" {
                     // read an element
                     let mut ls = line.split(" ");
-                    let elem_id = ls.nth(0).unwrap().parse::<u8>().unwrap();
+                    let _elem_id = ls.nth(0).unwrap().parse::<u8>().unwrap();
 
-                    #[cfg(feature = "2d")]
-                    { assert_eq!(elem_id, 9); }
+                    //#[cfg(feature = "2d")]
+                    //{ assert_eq!(elem_id, 9); }
 
 
-                    #[cfg(feature = "3d")]
-                    { assert_eq!(elem_id, 12); }
+                    //#[cfg(feature = "3d")]
+                    //{ assert_eq!(elem_id, 12); }
 
+                    let mut elem = vec![];
                     for value_str in ls {
-                        elements.push(
+                        elem.push(
                             value_str.parse().unwrap()
                         );
                     }
-                    elements.pop();
-                    element_starts.push(elements.len());
+                    elem.pop();
+
+                    let elem = reorder_raw_vtk_element(elem);
+                    
+                    tree.push_element(&elem);
+
                 } else if section == "NPOIN" {
                     // read a node
                     
@@ -237,7 +262,7 @@ impl BaseTree {
                         node[k] = v.parse().unwrap();
                     }
 
-                    nodes.push(node);
+                    tree.push_node(node);
 
                 }
 
@@ -246,8 +271,7 @@ impl BaseTree {
 
         }
 
-
-        Ok(Self { nodes, elements, element_starts })
+        Ok(tree)
     }
 
 }
@@ -290,6 +314,31 @@ impl BaseTree {
 }
 
 
+impl BaseTree {
+
+    // Methods for building custom basetrees
+
+    // Create a new empty base tree
+    pub fn new() -> Self {
+        Self { nodes: vec![], elements: vec![], element_starts: vec![0] }
+    }
+
+    // Add a node to a basetree
+    pub fn push_node(&mut self, node: [f64; DIM]) -> usize {
+        self.nodes.push(node);
+        self.nodes.len() - 1
+    }
+
+    // Add an element to a basetree
+    pub fn push_element(&mut self, element: &[usize]) -> usize {
+        self.elements.extend(element);
+        self.element_starts.push(self.elements.len());
+        self.element_starts.len() - 2
+    }
+
+}
+
+
 
 
 
@@ -314,34 +363,6 @@ pub fn basis(
     }
 }
 
-#[cfg(feature = "3d")]
-pub fn basis(
-    point: [f64; DIM],
-    i: usize
-) -> f64 {
-    let x = point[0];
-    let y = point[1];
-    let z = point[2];
-    if i == 0 {
-        (1.0 - x) * (1.0 - y) * (1.0 - z)
-    } else if i == 1 {
-        x * (1.0 - y) * (1.0 - z)
-    } else if i == 2 {
-        x * y  * (1.0 - z)
-    } else if i == 3 {
-        (1.0 - x) * y  * (1.0 - z)
-    } else if i == 4 {
-        (1.0 - x) * (1.0 - y) * z
-    } else if i == 5 {
-        x * (1.0 - y) * z
-    } else if i == 6 {
-        x * y  * z
-    } else if i == 7 {
-        (1.0 - x) * y  * z
-    } else {
-        panic!()
-    }
-}
 
 
 
