@@ -1,0 +1,21 @@
+[package]
+name = "p4est"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+mpi = "0.8.1"
+p4est-sys = { path = "/home/sixel/code/rust/p4est-sys", default-features = false }
+
+[profile.dev.package."*"]
+opt-level = 3
+debug = true
+debug-assertions = false
+codegen-units = 256
+
+
+[features]
+default = ["3d"]
+2d = ["p4est-sys/2d"]
+3d = ["p4est-sys/3d"]
+
