@@ -341,30 +341,3 @@ impl BaseTree {
 
 
 
-
-// basis function for tensor element
-#[cfg(feature = "2d")]
-pub fn basis(
-    point: [f64; DIM],
-    i: usize
-) -> f64 {
-    let x = point[0];
-    let y = point[1];
-    if i == 0 {
-        (1.0 - x) * (1.0 - y)
-    } else if i == 1 {
-        x * (1.0 - y)
-    } else if i == 2 {
-        x * y
-    } else if i == 3 {
-        (1.0 - x) * y
-    } else {
-        panic!()
-    }
-}
-
-
-
-
-
-

@@ -3,7 +3,6 @@
 pub use basis::*;
 
 
-#[cfg(feature = "3d")]
 pub mod basis {
     use p4est_sys::consts::DIM;
 

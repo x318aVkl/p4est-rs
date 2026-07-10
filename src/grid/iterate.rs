@@ -1,6 +1,8 @@
 use std::ffi::c_void;
 
-use crate::{basetree::BaseTree, grid::{CellData, Grid, corners::cell_corners}};
+use p4est_sys::consts::FACE_CORNERS;
+
+use crate::{basetree::BaseTree, grid::{CellData, Grid, cell::Face, corners::{cell_corners, face_corners_from_cell}}};
 
 
 use crate::grid::cell::Cell;
@@ -39,6 +41,45 @@ impl<T> Grid<T> {
             USER_VOLUME_FN = None;
         }
     }
+
+
+    pub fn map_faces<'a, F>(&'a self, f: F) where F: FnMut(Face<'a, T>) {
+        unsafe {
+            USER_FACE_FN = Some(&f as *const F as *mut c_void);
+
+            let face_info = FaceIterInfo {
+                geometry: &self.base_tree as *const BaseTree,
+                ghost_data: self.ghost_data.as_ptr() as *mut CellData<T>,
+                local_size: self.local_len(),
+                current_face_id: 0,
+            };
+
+            let user_data = &face_info as *const FaceIterInfo<T> as *mut c_void;
+
+            #[cfg(feature = "2d")]
+            p4est_sys::p4est_iterate(
+                self.grid,
+                self.ghosts,
+                user_data,
+                None,
+                Some(iter_face_fn::<'a, F, T>),
+                None,
+            );
+
+            #[cfg(feature = "3d")]
+            p4est_sys::p4est_iterate(
+                self.grid,
+                self.ghosts,
+                user_data,
+                None,
+                Some(iter_face_fn::<'a, F, T>),
+                None,
+                None,
+            );
+
+            USER_FACE_FN = None;
+        }
+    }
 }
 
 
@@ -72,4 +113,191 @@ extern "C" fn iter_volume_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_volume_i
     }
 
 }
+
+
+
+struct FaceIterInfo<T> {
+    geometry: *const BaseTree,
+    ghost_data: *mut CellData<T>,
+    local_size: usize,
+    current_face_id: usize,
+}
+
+
+static mut USER_FACE_FN: Option<*mut std::ffi::c_void> = None;
+
+extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info, data: *mut std::ffi::c_void) where F: FnMut(Face<'a, T>), T: 'a + Sized {
+
+    unsafe {
+
+        let sides = (*info).sides;
+        let side0: *mut p4est_sys::p4est_iter_face_side = sides.array.offset((sides.elem_size * 0) as isize) as *mut p4est_sys::p4est_iter_face_side;
+        
+        let mut quads_0: [Option<(p4est_sys::p4est_quadrant, usize, bool)>; FACE_CORNERS] = [None; FACE_CORNERS];
+        let mut side0len = 1;
+
+        let ghost_info_ptr = data as *mut FaceIterInfo<T>;
+
+        let geom = & *((*ghost_info_ptr).geometry);
+
+        let ghost_data = (*ghost_info_ptr).ghost_data;
+
+        let local_len = (*ghost_info_ptr).local_size as u32;
+
+        let face_id = &mut (*ghost_info_ptr).current_face_id;
+
+        if (*side0).is_hanging == 0 {
+            let qid = (*side0).is.full.quadid as usize;
+            quads_0[0] = Some((*(*side0).is.full.quad, qid, (*side0).is.full.is_ghost == 1));
+        } else {
+            // it is hanging, N_CHILD quads
+            for i in 0..FACE_CORNERS {
+                let qid = (*side0).is.hanging.quadid[i] as usize;
+                quads_0[i] = Some((*(*side0).is.hanging.quad[i], qid, (*side0).is.hanging.is_ghost[i] == 1));
+            }
+            side0len = FACE_CORNERS;
+        }
+
+        if sides.elem_count == 1 {
+            // this is a boundary!
+
+            for i in 0..side0len {
+                let (mut quad_0, q0id, is_ghost_0) = quads_0[i].unwrap();
+
+                let corners0 = cell_corners(geom,  (*side0).treeid, &mut quad_0);
+
+                let cell_data = if is_ghost_0 {
+                        &mut *(ghost_data.offset(q0id as isize) as *mut CellData<T>) as &mut CellData<T>
+                    } else {
+                        &mut *(quad_0.p.user_data as *mut CellData<T>)
+                    };
+                
+                let face_corners = face_corners_from_cell((*side0).face, corners0);
+
+                let face = Face {
+                    cell0: Cell {
+                        data: &(*cell_data).data,
+                        local_id: (*cell_data).local_id as usize,
+                        global_id: (*cell_data).global_id as usize,
+                        level: quad_0.level as u8,
+                        corners: corners0,
+                    },
+                    cell1: None,
+                    id: *face_id,
+                    corners: face_corners,
+                };
+
+                let f = USER_FACE_FN.unwrap() as *mut F;
+
+                (*f)(face);
+
+                *face_id += 1;
+            }
+            
+        } else if sides.elem_count == 2 {
+
+            // this is an internal face, two sides
+            let side1: *mut p4est_sys::p4est_iter_face_side = sides.array.offset((sides.elem_size * 1) as isize) as *mut p4est_sys::p4est_iter_face_side;
+
+            let mut quads_1: [Option<(p4est_sys::p4est_quadrant, usize, bool)>; FACE_CORNERS] = [None; FACE_CORNERS];
+            let mut side1len = 1;
+
+            if (*side1).is_hanging == 0 {
+                quads_1[0] = Some((*(*side1).is.full.quad, (*side1).is.full.quadid as usize, (*side1).is.full.is_ghost == 1));
+            } else {
+                // it is hanging, N_CHILD quads
+                for i in 0..FACE_CORNERS {
+                    quads_1[i] = Some((*(*side1).is.hanging.quad[i], (*side1).is.hanging.quadid[i] as usize, (*side1).is.hanging.is_ghost[i] == 1));
+                }
+                side1len = FACE_CORNERS;
+            }
+
+            for i in 0..side0len {
+                for j in 0..side1len {
+
+                    let (mut quad_0, q0id, is_ghost_0) = quads_0[i].unwrap();
+                    let (mut quad_1, q1id, is_ghost_1) = quads_1[j].unwrap();
+
+                    let corners0 = cell_corners(geom,  (*side0).treeid, &mut quad_0);
+                    let corners1 = cell_corners(geom,  (*side1).treeid, &mut quad_1);
+
+                    let quad_0_data = if is_ghost_0 {
+                        &mut *(ghost_data.offset(q0id as isize) as *mut CellData<T>) as &mut CellData<T>
+                    } else {
+                        &mut *(quad_0.p.user_data as *mut CellData<T>)
+                    };
+
+                    let quad_1_data = if is_ghost_1 {
+                        &mut *(ghost_data.offset(q1id as isize) as *mut CellData<T>) as &mut CellData<T>
+                    } else {
+                        &mut *(quad_1.p.user_data as *mut CellData<T>)
+                    };
+
+                    let face_corners = if side0len >= side1len {
+                        face_corners_from_cell((*side0).face, corners0)
+                    } else {
+                        face_corners_from_cell((*side1).face, corners1)
+                    };
+
+                    if (quad_0_data.local_id < local_len) || (quad_1_data.local_id < local_len) {
+
+                        let face = if quad_0_data.local_id < quad_1_data.local_id {
+                            Face {
+                                cell0: Cell {
+                                    data: &quad_0_data.data,
+                                    local_id: quad_0_data.local_id as usize,
+                                    global_id: quad_0_data.global_id as usize,
+                                    level: quad_0.level as u8,
+                                    corners: corners0,
+                                },
+                                cell1: Some(Cell {
+                                    data: &quad_1_data.data,
+                                    local_id: quad_1_data.local_id as usize,
+                                    global_id: quad_1_data.global_id as usize,
+                                    level: quad_1.level as u8,
+                                    corners: corners1,
+                                }),
+                                id: *face_id,
+                                corners: face_corners,
+                            }
+                        } else {
+                            Face {
+                                cell0: Cell {
+                                    data: &quad_1_data.data,
+                                    local_id: quad_1_data.local_id as usize,
+                                    global_id: quad_1_data.global_id as usize,
+                                    level: quad_1.level as u8,
+                                    corners: corners1,
+                                },
+                                cell1: Some(Cell {
+                                    data: &quad_0_data.data,
+                                    local_id: quad_0_data.local_id as usize,
+                                    global_id: quad_0_data.global_id as usize,
+                                    level: quad_0.level as u8,
+                                    corners: corners0,
+                                }),
+                                id: *face_id,
+                                corners: face_corners,
+                            }
+                        };
+
+                        let f = USER_FACE_FN.unwrap() as *mut F;
+
+                        (*f)(face);
+
+                        *face_id += 1;
+
+                    }
+
+                }
+            }
+
+        } else {
+            panic!("face has not 1 or two sides?? wth thats an issue, better call saul!");
+        }
+
+    }
+
+}
+
 

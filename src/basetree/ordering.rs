@@ -32,6 +32,20 @@ pub fn reorder_raw_vtk_element(
         }
 
     } else if order == 2 {
+
+        #[cfg(feature = "2d")]
+        {
+            result[0] = element[0];
+            result[1] = element[4];
+            result[2] = element[1];
+            result[3] = element[7];
+            result[4] = element[8];
+            result[5] = element[5];
+            result[6] = element[3];
+            result[7] = element[6];
+            result[8] = element[2];
+        }
+
         #[cfg(feature = "3d")]
         {
             result[0] = element[0];
@@ -64,6 +78,26 @@ pub fn reorder_raw_vtk_element(
         }
 
     } else if order == 3 {
+
+        #[cfg(feature = "2d")]
+        {
+            result[0] = 0;
+            result[1] = 4;
+            result[2] = 5;
+            result[3] = 1;
+            result[4] = 11;
+            result[5] = 12;
+            result[6] = 13;
+            result[7] = 6;
+            result[8] = 10;
+            result[9] = 15;
+            result[10] = 14;
+            result[11] = 7;
+            result[12] = 3;
+            result[13] = 9;
+            result[14] = 8;
+            result[15] = 2;
+        }
 
         #[cfg(feature = "3d")]
         {

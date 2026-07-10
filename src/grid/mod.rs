@@ -6,12 +6,13 @@ use crate::basetree::BaseTree;
 
 
 pub mod refine;
+pub mod transfer;
 pub mod iterate;
 pub mod corners;
 pub mod cell;
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct CellData<T> {
     pub data: T,
     pub local_id: u32,
@@ -30,6 +31,8 @@ pub struct Grid<T> {
     grid: *mut p4est_sys::p4est,
     
     ghosts: *mut p4est_sys::p4est_ghost,
+
+    ghost_data: Vec<CellData<T>>,
     
     pt: PhantomData<T>,
 
@@ -59,6 +62,7 @@ impl<T> Grid<T> {
             connectivity,
             grid,
             ghosts: std::ptr::null_mut(),
+            ghost_data: vec![],
             pt: PhantomData,
             global_id_offset: 0,
         }.with_updated_ids()
@@ -86,6 +90,7 @@ impl<T> Grid<T> {
             connectivity,
             grid,
             ghosts: std::ptr::null_mut(),
+            ghost_data: vec![],
             pt: PhantomData,
             global_id_offset: 0,
         }.with_updated_ids())
@@ -98,11 +103,61 @@ impl<T> Grid<T> {
         unsafe { (*self.grid).global_num_quadrants as usize }
     }
 
-    pub fn partition(&mut self) {
+    pub fn len_with_ghosts(&self) -> usize {
+        self.local_len() + self.ghost_data.len()
+    }
+
+    pub fn partition(&mut self) where T: Clone + Default {
+        if self.communicator.size() <= 1 {
+            return;
+        }
+
         unsafe {
             p4est_sys::p4est_partition(self.grid, 1, None);
         }
         self.update_ids();
+        self.update_ghosts();
+    }
+
+    pub fn update_ghosts(&mut self) where T: Clone + Default {
+        if self.communicator.size() <= 1 {
+            return;
+        }
+
+        if self.ghosts != std::ptr::null_mut() {
+            unsafe {
+                p4est_sys::p4est_ghost_destroy(self.ghosts);
+                self.ghosts = std::ptr::null_mut();
+            }
+        }
+
+        unsafe {
+            self.ghosts = p4est_sys::p4est_ghost_new(self.grid, p4est_sys::p4est_connect_type_t_P4EST_CONNECT_FACE);
+        
+            self.ghost_data.resize((*self.ghosts).ghosts.elem_count, CellData::<T>::default());
+            
+            p4est_sys::p4est_ghost_exchange_data(self.grid, self.ghosts, self.ghost_data.as_mut_ptr() as *mut c_void);
+        }
+
+        self.update_ghost_ids();
+
+    }
+
+    pub fn exchange_ghost_data(&mut self) {
+        if self.ghosts != std::ptr::null_mut() {
+            unsafe {
+                p4est_sys::p4est_ghost_exchange_data(self.grid, self.ghosts, self.ghost_data.as_mut_ptr() as *mut c_void);
+            }
+        }
+        self.update_ghost_ids();
+    }
+
+    pub(crate) fn update_ghost_ids(&mut self) {
+        let local_len = self.local_len();
+
+        for i in 0..self.ghost_data.len() {
+            self.ghost_data[i].local_id = ( local_len + i ) as u32;
+        }
     }
 
 }

@@ -1,4 +1,4 @@
-use p4est_sys::consts::{CELL_CORNERS, DIM};
+use p4est_sys::consts::{CELL_CORNERS, DIM, FACE_CORNERS};
 
 use crate::basetree::BaseTree;
 
@@ -50,4 +50,43 @@ pub(crate) unsafe fn cell_corners(tree: &BaseTree, treeid: i32, quad: *mut p4est
     }
 
     corners
+}
+
+
+#[cfg(feature = "2d")]
+pub(crate) fn face_corner_ids(face: i8) -> [i32; FACE_CORNERS] {
+    match face {
+
+        0 => [2, 0],
+        1 => [1, 3],
+        2 => [0, 1],
+        3 => [3, 2],
+
+        _ => panic!("invalid face id {}", face)
+    }
+}
+
+#[cfg(feature = "3d")]
+pub(crate) fn face_corner_ids(face: i8) -> [i32; FACE_CORNERS] {
+    match face {
+
+        0 => [0, 4, 6, 2],
+        1 => [1, 3, 7, 5],
+        2 => [0, 1, 5, 4],
+        3 => [3, 2, 6, 7],
+        4 => [0, 2, 3, 1],
+        5 => [4, 5, 7, 6],
+
+        _ => panic!("invalid face id {}", face)
+    }
+}
+
+pub(crate) fn face_corners_from_cell(face: i8, cell_corners: [[f64; DIM]; CELL_CORNERS]) -> [[f64; DIM]; FACE_CORNERS] {
+    let mut out = [[0.0; DIM]; FACE_CORNERS];
+
+    for (k, i) in face_corner_ids(face).into_iter().enumerate() {
+        out[k] = cell_corners[i as usize];
+    }
+
+    out
 }

@@ -15,11 +15,21 @@ fn main() {
         grid.refine_uniform();
         grid.partition();
     }
+    grid.refine(|cell| {
+        cell.corner(0)[0] < 0.5
+    });
+    grid.partition();
 
     println!("Grid len = {} / {}", grid.local_len(), grid.global_len());
 
     grid.map_cells(|cell| {
-        println!("cell {} {} {:?}", cell.local_id, cell.global_id, cell.corner(0));
+        println!("rank {} cell {} {} {:?}", world.rank(), cell.local_id, cell.global_id, cell.corner(0));
+    });
+
+    println!("");
+
+    grid.map_faces(|face| {
+        println!("rank {} face {} : {} {}", world.rank(), face.id, face.cell0.local_id, match face.cell1 {Some(c) => c.local_id as i32, None => -1});
     });
 
 }

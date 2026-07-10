@@ -1,5 +1,9 @@
 
-use p4est_sys::consts::{CELL_CORNERS, DIM};
+use std::os::raw::c_void;
+
+use p4est_sys::consts::{CELL_CORNERS, DIM, FACE_CORNERS};
+
+use crate::{basetree::BaseTree, grid::{CellData, corners::cell_corners}};
 
 
 
@@ -20,5 +24,46 @@ impl<'a, T> Cell<'a, T> {
         self.corners[i]
     }
 
+    pub(crate) unsafe fn from_quad(
+        base_tree: &BaseTree,
+        treeid: i32,
+        quad: *const p4est_sys::p4est_quadrant,
+    ) -> Self {
+        unsafe {
+            
+            let cell_data: *const CellData<T> = (*quad).p.user_data as *mut c_void as *const CellData<T>;
+            let cell_data = &(*cell_data);
+
+            let id = cell_data.local_id;
+            let gid = cell_data.global_id;
+            let corners = cell_corners(base_tree, treeid, quad as *mut p4est_sys::p4est_quadrant);
+            
+            Self {
+                data: &cell_data.data, 
+                local_id: id as usize, 
+                global_id: gid as usize,
+                level: (*quad).level as u8,
+                corners,
+            }
+        }
+    }
 }
+
+
+
+#[derive(Debug)]
+pub struct Face<'a, T> {
+    pub cell0: Cell<'a, T>,
+    pub cell1: Option<Cell<'a, T>>,
+    pub id: usize,
+    pub(super) corners: [[f64; DIM]; FACE_CORNERS],
+}
+
+
+impl<'a, T> Face<'a, T> {
+    pub fn corner(&self, i: usize) -> [f64; DIM] {
+        self.corners[i]
+    }
+}
+
 
