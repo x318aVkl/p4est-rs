@@ -4,6 +4,9 @@ pub mod grid;
 pub mod basetree;
 
 
+pub mod consts {
+    pub use p4est_sys::consts::DIM;
+}
 
 pub mod env {
     use std::os::raw::c_void;
