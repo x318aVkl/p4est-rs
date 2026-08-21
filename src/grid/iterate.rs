@@ -1,6 +1,6 @@
 use std::ffi::c_void;
 
-use p4est_sys::consts::FACE_CORNERS;
+use p4est_sys::consts::{DIM, FACE_CORNERS};
 
 use crate::{basetree::BaseTree, grid::{CellData, Grid, cell::Face, corners::{cell_corners, face_corners_from_cell}}};
 
@@ -11,6 +11,7 @@ use crate::grid::cell::Cell;
 
 
 impl<T> Grid<T> {
+    
     pub fn map_cells<'a, F>(&'a self, f: F) where F: FnMut(Cell<'a, T>) {
         unsafe {
             USER_VOLUME_FN = Some(&f as *const F as *mut c_void);
@@ -103,6 +104,7 @@ extern "C" fn iter_volume_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_volume_i
             data: &cell_data.data, 
             local_id: id as usize, 
             global_id: gid as usize,
+            is_ghost: false,
             level: (*(*info).quad).level as u8,
             corners,
         };
@@ -180,6 +182,7 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                         local_id: (*cell_data).local_id as usize,
                         global_id: (*cell_data).global_id as usize,
                         level: quad_0.level as u8,
+                        is_ghost: is_ghost_0,
                         corners: corners0,
                     },
                     cell1: None,
@@ -248,6 +251,7 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                                     local_id: quad_0_data.local_id as usize,
                                     global_id: quad_0_data.global_id as usize,
                                     level: quad_0.level as u8,
+                                    is_ghost: is_ghost_0,
                                     corners: corners0,
                                 },
                                 cell1: Some(Cell {
@@ -255,6 +259,7 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                                     local_id: quad_1_data.local_id as usize,
                                     global_id: quad_1_data.global_id as usize,
                                     level: quad_1.level as u8,
+                                    is_ghost: is_ghost_1,
                                     corners: corners1,
                                 }),
                                 id: *face_id,
@@ -267,6 +272,7 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                                     local_id: quad_1_data.local_id as usize,
                                     global_id: quad_1_data.global_id as usize,
                                     level: quad_1.level as u8,
+                                    is_ghost: is_ghost_0,
                                     corners: corners1,
                                 },
                                 cell1: Some(Cell {
@@ -274,6 +280,7 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                                     local_id: quad_0_data.local_id as usize,
                                     global_id: quad_0_data.global_id as usize,
                                     level: quad_0.level as u8,
+                                    is_ghost: is_ghost_1,
                                     corners: corners0,
                                 }),
                                 id: *face_id,
@@ -299,5 +306,4 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
     }
 
 }
-
 

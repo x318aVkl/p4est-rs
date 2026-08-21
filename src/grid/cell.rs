@@ -13,6 +13,7 @@ pub struct Cell<'a, T> {
     pub local_id: usize,
     pub global_id: usize,
     pub level: u8,
+    pub is_ghost: bool,
     pub(super) corners: [[f64; DIM]; CELL_CORNERS],
 }
 
@@ -24,6 +25,10 @@ impl<'a, T> Cell<'a, T> {
         self.corners[i]
     }
 
+    pub fn corner_len(&self) -> usize {
+        self.corners.len()
+    }
+
     pub(crate) unsafe fn from_quad(
         base_tree: &BaseTree,
         treeid: i32,
@@ -32,7 +37,7 @@ impl<'a, T> Cell<'a, T> {
         unsafe {
             
             let cell_data: *const CellData<T> = (*quad).p.user_data as *mut c_void as *const CellData<T>;
-            let cell_data = &(*cell_data);
+            let cell_data: &CellData<T> = &(*cell_data);
 
             let id = cell_data.local_id;
             let gid = cell_data.global_id;
@@ -43,6 +48,7 @@ impl<'a, T> Cell<'a, T> {
                 local_id: id as usize, 
                 global_id: gid as usize,
                 level: (*quad).level as u8,
+                is_ghost: false,
                 corners,
             }
         }
