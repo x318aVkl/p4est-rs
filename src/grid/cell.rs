@@ -14,6 +14,7 @@ pub struct Cell<'a, T> {
     pub global_id: usize,
     pub level: u8,
     pub is_ghost: bool,
+    pub owner_rank: u32,
     pub(super) corners: [[f64; DIM]; CELL_CORNERS],
 }
 
@@ -49,6 +50,7 @@ impl<'a, T> Cell<'a, T> {
                 global_id: gid as usize,
                 level: (*quad).level as u8,
                 is_ghost: false,
+                owner_rank: cell_data.owner_rank,
                 corners,
             }
         }
@@ -62,6 +64,7 @@ pub struct Face<'a, T> {
     pub cell0: Cell<'a, T>,
     pub cell1: Option<Cell<'a, T>>,
     pub id: usize,
+    pub(crate) face_id: i8,
     pub(super) corners: [[f64; DIM]; FACE_CORNERS],
 }
 

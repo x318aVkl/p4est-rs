@@ -30,6 +30,7 @@ extern "C" fn refine_fn<'a, F, T>(_grid: *mut p4est_sys::p4est, treeid: i32, qua
             global_id: id as usize,
             level: (*quad).level as u8,
             is_ghost: false,
+            owner_rank: cell_data.owner_rank,
             corners,
         };
 

@@ -10,6 +10,7 @@ pub mod transfer;
 pub mod iterate;
 pub mod corners;
 pub mod cell;
+pub mod nodes;
 
 
 #[derive(Clone, Debug, Default)]
@@ -17,6 +18,7 @@ pub(crate) struct CellData<T> {
     pub data: T,
     pub local_id: u32,
     pub global_id: u32,
+    pub owner_rank: u32,
 }
 
 
@@ -201,6 +203,9 @@ impl<T> Grid<T> {
         let local_len = self.local_len();
 
         let mut self_offset: usize = 0;
+        let mut user_data = [0_usize; 2];
+        user_data[0] = self_offset;
+        user_data[1] = rank as usize;
         
         if rank > 0 {
             unsafe {
@@ -225,7 +230,7 @@ impl<T> Grid<T> {
             p4est_sys::p4est_iterate(
                 self.grid,
                 self.ghosts,
-                (&mut self_offset as *mut usize) as *mut c_void,
+                user_data.as_mut_ptr() as *mut c_void,
                 Some(iter_volume_update_ids_fn::<T>),
                 None,
                 None,
@@ -235,7 +240,7 @@ impl<T> Grid<T> {
             p4est_sys::p4est_iterate(
                 self.grid,
                 self.ghosts,
-                (&mut self_offset as *mut usize) as *mut c_void,
+                user_data.as_mut_ptr() as *mut c_void,
                 Some(iter_volume_update_ids_fn::<T>),
                 None,
                 None,
@@ -255,8 +260,10 @@ impl<T> Grid<T> {
 extern "C" fn iter_volume_update_ids_fn<T>(info: *mut p4est_sys::p4est_iter_volume_info, data: *mut std::ffi::c_void) {
 
     unsafe {
+        
 
         let global_offset = *(data as *const usize);
+        let rank = *(data as *const usize).offset(1);
 
         let grid = (*info).p4est;
 
@@ -271,6 +278,7 @@ extern "C" fn iter_volume_update_ids_fn<T>(info: *mut p4est_sys::p4est_iter_volu
 
         cell_data.local_id = local_id as u32;
         cell_data.global_id = (local_id as u32) + (global_offset as u32);
+        cell_data.owner_rank = rank as u32;
 
     }
 

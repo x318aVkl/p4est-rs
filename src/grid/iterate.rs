@@ -105,6 +105,7 @@ extern "C" fn iter_volume_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_volume_i
             local_id: id as usize, 
             global_id: gid as usize,
             is_ghost: false,
+            owner_rank: cell_data.owner_rank,
             level: (*(*info).quad).level as u8,
             corners,
         };
@@ -183,10 +184,12 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                         global_id: (*cell_data).global_id as usize,
                         level: quad_0.level as u8,
                         is_ghost: is_ghost_0,
+                        owner_rank: (*cell_data).owner_rank,
                         corners: corners0,
                     },
                     cell1: None,
                     id: *face_id,
+                    face_id: (*side0).face,
                     corners: face_corners,
                 };
 
@@ -236,10 +239,10 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                         &mut *(quad_1.p.user_data as *mut CellData<T>)
                     };
 
-                    let face_corners = if side0len >= side1len {
-                        face_corners_from_cell((*side0).face, corners0)
+                    let (face_corners, lface_id) = if side0len >= side1len {
+                        (face_corners_from_cell((*side0).face, corners0), (*side0).face)
                     } else {
-                        face_corners_from_cell((*side1).face, corners1)
+                        (face_corners_from_cell((*side1).face, corners1), (*side1).face)
                     };
 
                     if (quad_0_data.local_id < local_len) || (quad_1_data.local_id < local_len) {
@@ -252,6 +255,7 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                                     global_id: quad_0_data.global_id as usize,
                                     level: quad_0.level as u8,
                                     is_ghost: is_ghost_0,
+                                    owner_rank: quad_0_data.owner_rank,
                                     corners: corners0,
                                 },
                                 cell1: Some(Cell {
@@ -260,9 +264,11 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                                     global_id: quad_1_data.global_id as usize,
                                     level: quad_1.level as u8,
                                     is_ghost: is_ghost_1,
+                                    owner_rank: quad_1_data.owner_rank,
                                     corners: corners1,
                                 }),
                                 id: *face_id,
+                                face_id: lface_id,
                                 corners: face_corners,
                             }
                         } else {
@@ -272,7 +278,8 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                                     local_id: quad_1_data.local_id as usize,
                                     global_id: quad_1_data.global_id as usize,
                                     level: quad_1.level as u8,
-                                    is_ghost: is_ghost_0,
+                                    is_ghost: is_ghost_1,
+                                    owner_rank: quad_1_data.owner_rank,
                                     corners: corners1,
                                 },
                                 cell1: Some(Cell {
@@ -280,10 +287,12 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                                     local_id: quad_0_data.local_id as usize,
                                     global_id: quad_0_data.global_id as usize,
                                     level: quad_0.level as u8,
-                                    is_ghost: is_ghost_1,
+                                    is_ghost: is_ghost_0,
+                                    owner_rank: quad_0_data.owner_rank,
                                     corners: corners0,
                                 }),
                                 id: *face_id,
+                                face_id: lface_id,
                                 corners: face_corners,
                             }
                         };
