@@ -5,20 +5,17 @@ use crate::grid::{Grid, cell::{Cell, Face}, corners::face_corner_ids};
 
 
 pub struct NodeNumbering {
-    lnodes: *mut p4est_sys::p4est_lnodes,
+    nodes: *mut p4est_sys::p4est_nodes,
 }
 
 impl NodeNumbering {
 
     pub fn new<T>(grid: &Grid<T>) -> Self {
         Self {
-            lnodes: unsafe {p4est_sys::p4est_lnodes_new(grid.grid, grid.ghosts, 1)}
+            nodes: unsafe {p4est_sys::p4est_nodes_new(grid.grid, grid.ghosts)}
         }
     }
 
-    pub fn len(&self) -> usize {
-        unsafe { (*self.lnodes).num_local_nodes  as usize }
-    }
 
     pub fn cell_nodes<'a, T>(&self, cell: &Cell<'a, T>) -> [usize; CELL_CORNERS] {
         let cell_id = cell.local_id;
@@ -26,7 +23,7 @@ impl NodeNumbering {
         let mut out = [0; CELL_CORNERS];
 
         for i in 0..CELL_CORNERS {
-            let nidx = unsafe { *(*self.lnodes).element_nodes.offset((CELL_CORNERS * cell_id + i) as isize) };
+            let nidx = unsafe { *(*self.nodes).local_nodes.offset((CELL_CORNERS * cell_id + i) as isize) };
             out[i] = nidx as usize;
         }
 
@@ -58,7 +55,7 @@ impl NodeNumbering {
 impl Drop for NodeNumbering {
     fn drop(&mut self) {
         unsafe {
-            p4est_sys::p4est_lnodes_destroy(self.lnodes);
+            p4est_sys::p4est_nodes_destroy(self.nodes);
         }
     }
 }
