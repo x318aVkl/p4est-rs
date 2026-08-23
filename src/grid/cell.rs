@@ -65,6 +65,7 @@ pub struct Face<'a, T> {
     pub cell1: Option<Cell<'a, T>>,
     pub id: usize,
     pub(crate) face_id: i8,
+    pub(crate) face_id_side: u8,
     pub(super) corners: [[f64; DIM]; FACE_CORNERS],
 }
 

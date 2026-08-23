@@ -190,6 +190,7 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                     cell1: None,
                     id: *face_id,
                     face_id: (*side0).face,
+                    face_id_side: 0,
                     corners: face_corners,
                 };
 
@@ -239,13 +240,13 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                         &mut *(quad_1.p.user_data as *mut CellData<T>)
                     };
 
-                    let (face_corners, lface_id) = if side0len >= side1len {
-                        (face_corners_from_cell((*side0).face, corners0), (*side0).face)
+                    let (face_corners, lface_id, lface_id_side) = if side0len >= side1len {
+                        (face_corners_from_cell((*side0).face, corners0), (*side0).face, 0)
                     } else {
-                        (face_corners_from_cell((*side1).face, corners1), (*side1).face)
+                        (face_corners_from_cell((*side1).face, corners1), (*side1).face, 1)
                     };
 
-                    if (quad_0_data.local_id < local_len) || (quad_1_data.local_id < local_len) {
+                    //if (quad_0_data.local_id < local_len) || (quad_1_data.local_id < local_len) {
 
                         let face = if quad_0_data.local_id < quad_1_data.local_id {
                             Face {
@@ -269,6 +270,7 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                                 }),
                                 id: *face_id,
                                 face_id: lface_id,
+                                face_id_side: lface_id_side,
                                 corners: face_corners,
                             }
                         } else {
@@ -293,6 +295,7 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                                 }),
                                 id: *face_id,
                                 face_id: lface_id,
+                                face_id_side: if lface_id_side == 0 {1} else {0},   // FLIP IT, its bad but anyway
                                 corners: face_corners,
                             }
                         };
@@ -303,7 +306,7 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
 
                         *face_id += 1;
 
-                    }
+                   //}
 
                 }
             }

@@ -32,14 +32,10 @@ impl NodeNumbering {
 
     pub fn face_nodes<'a, T>(&self, face: &Face<'a, T>) -> [usize; FACE_CORNERS] {
         let face_id = face.face_id;
-        let cell = if let Some(c1) = &face.cell1 {
-            if c1.level > face.cell0.level {
-                c1
-            } else {
-                &face.cell0
-            }
-        } else {
+        let cell = if face.face_id_side == 0 {
             &face.cell0
+        } else {
+            face.cell1.as_ref().unwrap()
         };
         let fc = face_corner_ids(face_id);
         let mut out = [0; FACE_CORNERS];
