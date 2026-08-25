@@ -1,6 +1,6 @@
 use std::ffi::c_void;
 
-use p4est_sys::consts::{DIM, FACE_CORNERS};
+use p4est_sys::consts::FACE_CORNERS;
 
 use crate::{basetree::BaseTree, grid::{CellData, Grid, cell::Face, corners::{cell_corners, face_corners_from_cell}}};
 
@@ -192,6 +192,7 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                     face_id: (*side0).face,
                     face_id_side: 0,
                     corners: face_corners,
+                    subface_id: if side0len > 1 {Some(i as u8)} else {None},
                 };
 
                 let f = USER_FACE_FN.unwrap() as *mut F;
@@ -246,6 +247,8 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                         (face_corners_from_cell((*side1).face, corners1), (*side1).face, 1)
                     };
 
+                    // edit, allow both side 0 and side 1 to be ghosts
+                    // this allows collection of all ghost data, required for lnodes
                     //if (quad_0_data.local_id < local_len) || (quad_1_data.local_id < local_len) {
 
                         let face = if quad_0_data.local_id < quad_1_data.local_id {
@@ -272,6 +275,7 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                                 face_id: lface_id,
                                 face_id_side: lface_id_side,
                                 corners: face_corners,
+                                subface_id: if (side0len > 1) || (side1len > 1) {Some(side0.max(side1) as u8)} else {None},
                             }
                         } else {
                             Face {
@@ -297,6 +301,7 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                                 face_id: lface_id,
                                 face_id_side: if lface_id_side == 0 {1} else {0},   // FLIP IT, its bad but anyway
                                 corners: face_corners,
+                                subface_id: if (side0len > 1) || (side1len > 1) {Some(side0.max(side1) as u8)} else {None},
                             }
                         };
 

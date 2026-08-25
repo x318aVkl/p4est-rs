@@ -67,6 +67,7 @@ pub struct Face<'a, T> {
     pub(crate) face_id: i8,
     pub(crate) face_id_side: u8,
     pub(super) corners: [[f64; DIM]; FACE_CORNERS],
+    pub(crate) subface_id: Option<u8>,
 }
 
 
