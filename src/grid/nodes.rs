@@ -51,7 +51,7 @@ impl NodeNumbering {
                 },
                 None => {
                     panic!("Node not found in map {:?}", hash);
-                }
+                },
             }
         }
 
@@ -86,14 +86,19 @@ impl NodeNumbering {
                 }
                 hash[3] = tree as u32;
 
-                cell_nodes[c0].insert(node_id);
-                if let Some(c1) = c1 {
-                    cell_nodes[c1].insert(node_id);
-                }
+                let n = if !self.node_map.contains_key(&hash) {
+                    self.node_map.insert(hash, node_id);
+                    self.node_positions.push(face.corners[i]);
+                    node_id += 1;
+                    node_id - 1
+                } else {
+                    *self.node_map.get(&hash).unwrap()
+                };
 
-                self.node_map.insert(hash, node_id);
-                self.node_positions.push(face.corners[i]);
-                node_id += 1;
+                cell_nodes[c0].insert(n);
+                if let Some(c1) = c1 {
+                    cell_nodes[c1].insert(n);
+                }
             }
 
         });
