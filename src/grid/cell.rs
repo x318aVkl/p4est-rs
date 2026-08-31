@@ -15,7 +15,10 @@ pub struct Cell<'a, T> {
     pub level: u8,
     pub is_ghost: bool,
     pub owner_rank: u32,
-    pub(super) corners: [[f64; DIM]; CELL_CORNERS],
+    pub(crate) corners: [[f64; DIM]; CELL_CORNERS],
+    pub(crate) corners_int: [[u32; DIM]; CELL_CORNERS],
+    pub(crate) raw_quad: *const p4est_sys::p4est_quadrant,
+    pub(crate) tree_id: i32,
 }
 
 
@@ -42,7 +45,7 @@ impl<'a, T> Cell<'a, T> {
 
             let id = cell_data.local_id;
             let gid = cell_data.global_id;
-            let corners = cell_corners(base_tree, treeid, quad as *mut p4est_sys::p4est_quadrant);
+            let (corners, corners_int) = cell_corners(base_tree, treeid, quad as *mut p4est_sys::p4est_quadrant);
             
             Self {
                 data: &cell_data.data, 
@@ -52,6 +55,9 @@ impl<'a, T> Cell<'a, T> {
                 is_ghost: false,
                 owner_rank: cell_data.owner_rank,
                 corners,
+                corners_int,
+                raw_quad: quad,
+                tree_id: treeid,
             }
         }
     }
@@ -66,7 +72,8 @@ pub struct Face<'a, T> {
     pub id: usize,
     pub(crate) face_id: i8,
     pub(crate) face_id_side: u8,
-    pub(super) corners: [[f64; DIM]; FACE_CORNERS],
+    pub(crate) corners: [[f64; DIM]; FACE_CORNERS],
+    pub(crate) corners_int: [[u32; DIM]; FACE_CORNERS],
     pub(crate) subface_id: Option<u8>,
 }
 

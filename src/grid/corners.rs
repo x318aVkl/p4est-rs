@@ -39,7 +39,7 @@ pub(crate) unsafe fn collect_quadrant_corner_nodes(quad: *mut p4est_sys::p4est_q
         }
     }
 }
-pub(crate) unsafe fn cell_corners(tree: &BaseTree, treeid: i32, quad: *mut p4est_sys::p4est_quadrant) -> [[f64; DIM]; CELL_CORNERS] {
+pub(crate) unsafe fn cell_corners(tree: &BaseTree, treeid: i32, quad: *mut p4est_sys::p4est_quadrant) -> ([[f64; DIM]; CELL_CORNERS], [[u32; DIM]; CELL_CORNERS]) {
     let mut corners = [[0.0; DIM]; CELL_CORNERS];
 
     let mut corner_nodes = [[0_i32; DIM]; CELL_CORNERS];
@@ -49,10 +49,20 @@ pub(crate) unsafe fn cell_corners(tree: &BaseTree, treeid: i32, quad: *mut p4est
         unsafe { corners[i] = qcoord_to_vertex(tree, treeid, corner_nodes[i]); }
     }
 
-    corners
+    let mut c = [[0_u32; DIM]; CELL_CORNERS];
+    for i in 0..CELL_CORNERS {
+        for j in 0..DIM {
+            c[i][j] = corner_nodes[i][j] as u32;
+        }
+    }
+
+    (corners, c)
 }
 
-
+//  2 ----- 3
+//  |       |
+//  |       |
+//  0 ----- 1
 #[cfg(feature = "2d")]
 pub(crate) fn face_corner_ids(face: i8) -> [i32; FACE_CORNERS] {
     match face {
@@ -81,8 +91,8 @@ pub(crate) fn face_corner_ids(face: i8) -> [i32; FACE_CORNERS] {
     }
 }
 
-pub(crate) fn face_corners_from_cell(face: i8, cell_corners: [[f64; DIM]; CELL_CORNERS]) -> [[f64; DIM]; FACE_CORNERS] {
-    let mut out = [[0.0; DIM]; FACE_CORNERS];
+pub(crate) fn face_corners_from_cell<T>(face: i8, cell_corners: [[T; DIM]; CELL_CORNERS]) -> [[T; DIM]; FACE_CORNERS] where T: Default + Copy {
+    let mut out = [[T::default(); DIM]; FACE_CORNERS];
 
     for (k, i) in face_corner_ids(face).into_iter().enumerate() {
         out[k] = cell_corners[i as usize];
