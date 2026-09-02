@@ -11,8 +11,8 @@ fn main() -> Result<(), std::io::Error> {
 
     p4est::env::initialize(&world);
 
-    //let mut grid = Grid::<()>::new_unitsquare(world.duplicate());
-    let mut grid = Grid::<()>::from_su2(std::fs::File::open("test.su2").unwrap(), world.duplicate()).unwrap();
+    let mut grid = Grid::<()>::new_unitsquare(world.duplicate());
+    //let mut grid = Grid::<()>::from_su2(std::fs::File::open("test.su2").unwrap(), world.duplicate()).unwrap();
 
     for _ in 1..=3 {
         grid.refine_uniform();
@@ -24,8 +24,27 @@ fn main() -> Result<(), std::io::Error> {
             c += cell.corner(i)[0];
         }
         c /= CELL_CORNERS as f64;
-        c < 0.0
+        c < 0.5
     });
+    grid.refine(|cell| {
+        let mut c = 0.;
+        for i in 0..CELL_CORNERS {
+            c += cell.corner(i)[0];
+        }
+        c /= CELL_CORNERS as f64;
+        c < 0.5
+    });
+    grid.coarsen(|cells| {
+        let mut c = 0.;
+        for cell in &cells {
+            for i in 0..CELL_CORNERS {
+                c += cell.corner(i)[1];
+            }
+        };
+        c /= (CELL_CORNERS * cells.len()) as f64;
+        c > 0.5
+    });
+    grid.balance();
     grid.partition();
 
     let nodes = NodeNumbering::new(&grid);
