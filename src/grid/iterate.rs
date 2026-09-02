@@ -172,6 +172,8 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
 
                 let (corners0, corners_int_0) = cell_corners(geom,  (*side0).treeid, quad_0 as *mut p4est_sys::p4est_quadrant);
 
+                let boundary = geom.element((*side0).treeid as usize).faces_boundaries()[(*side0).face as usize];
+
                 let cell_data = if is_ghost_0 {
                         &mut *(ghost_data.offset(q0id as isize) as *mut CellData<T>) as &mut CellData<T>
                     } else {
@@ -201,6 +203,7 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                     corners: face_corners,
                     corners_int: face_corners_int,
                     subface_id: if side0len > 1 {Some(i as u8)} else {None},
+                    boundary,
                 };
 
                 let f = USER_FACE_FN.unwrap() as *mut F;
@@ -291,6 +294,7 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                                 corners: face_corners,
                                 corners_int: face_corners_int,
                                 subface_id: if (side0len > 1) || (side1len > 1) {Some(side0.max(side1) as u8)} else {None},
+                                boundary: None,
                             }
                         } else {
                             Face {
@@ -324,6 +328,7 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                                 corners: face_corners,
                                 corners_int: face_corners_int,
                                 subface_id: if (side0len > 1) || (side1len > 1) {Some(side0.max(side1) as u8)} else {None},
+                                boundary: None,
                             }
                         };
 

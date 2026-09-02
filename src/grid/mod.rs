@@ -162,6 +162,13 @@ impl<T> Grid<T> {
         }
     }
 
+    pub fn boundary_len(&self) -> usize {
+        self.base_tree.boundary_len()
+    }
+    pub fn boundary_name(&self, boundary: u16) -> &str {
+        self.base_tree.boundary_name(boundary)
+    }
+
 }
 
 
