@@ -22,7 +22,7 @@ extern "C" fn refine_fn<'a, F, T>(_grid: *mut p4est_sys::p4est, treeid: i32, qua
 
         let id = cell_data.local_id;
         let tree = &*USER_BASETREE.unwrap();
-        let corners = cell_corners(tree, treeid, quad);
+        let (corners, corners_int) = cell_corners(tree, treeid, quad);
         
         let cell = Cell {
             data: &cell_data.data, 
@@ -32,6 +32,9 @@ extern "C" fn refine_fn<'a, F, T>(_grid: *mut p4est_sys::p4est, treeid: i32, qua
             is_ghost: false,
             owner_rank: cell_data.owner_rank,
             corners,
+            corners_int,
+            raw_quad: quad,
+            tree_id: treeid,
         };
 
         let f = USER_REFINE_FN.unwrap() as *mut F;

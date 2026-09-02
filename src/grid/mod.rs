@@ -134,7 +134,7 @@ impl<T> Grid<T> {
         }
 
         unsafe {
-            self.ghosts = p4est_sys::p4est_ghost_new(self.grid, p4est_sys::p4est_connect_type_t_P4EST_CONNECT_FULL);
+            self.ghosts = p4est_sys::p4est_ghost_new(self.grid, p4est_sys::p4est_connect_type_t_P4EST_CONNECT_FACE);
         
             self.ghost_data.resize((*self.ghosts).ghosts.elem_count, CellData::<T>::default());
             
