@@ -223,6 +223,7 @@ impl<T> Grid<T> {
 
         // we have the local offset for global id evaluation
         self.global_id_offset = self_offset;
+        user_data[0] = self.global_id_offset;
 
 
         unsafe {
