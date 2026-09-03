@@ -14,6 +14,7 @@ use crate::grid::corners::face_corner_ids;
 
 // A base tree that describes potentially high order elements
 // all elements are quads or hexahedra
+#[derive(Clone)]
 pub struct BaseTree {
     nodes: Vec<[f64; DIM]>,
     elements: Vec<usize>,
