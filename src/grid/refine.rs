@@ -87,14 +87,15 @@ extern "C" fn coarsen_fn<'a, F, T>(_grid: *mut p4est_sys::p4est, treeid: i32, qu
 
 impl<T> Grid<T> {
 
-    pub fn refine_uniform(&mut self) {
+    pub fn refine_uniform(&mut self) where T: Clone + Default {
         unsafe {
             p4est_sys::p4est_refine(self.grid, 0, Some(refine_uniform_fn), None);
         }
         self.update_ids();
+        self.update_ghosts();
     }
 
-    pub fn refine<'a, F>(&'a mut self, f: F) where F: Fn(Cell<'a, T>) -> bool {
+    pub fn refine<'a, F>(&'a mut self, f: F) where F: Fn(Cell<'a, T>) -> bool,T: Clone + Default {
         unsafe {
             USER_REFINE_FN = Some(&f as *const F as *mut c_void);
             USER_BASETREE = Some(&self.base_tree as *const BaseTree);
@@ -110,9 +111,10 @@ impl<T> Grid<T> {
             USER_BASETREE = None;
         }
         self.update_ids();
+        self.update_ghosts();
     }
 
-    pub fn coarsen<'a, F>(&'a mut self, f: F) where F: Fn([Cell<'a, T>; CELL_CORNERS]) -> bool {
+    pub fn coarsen<'a, F>(&'a mut self, f: F) where F: Fn([Cell<'a, T>; CELL_CORNERS]) -> bool, T: Clone + Default {
         unsafe {
             USER_COARSEN_FN = Some(&f as *const F as *mut c_void);
             USER_BASETREE = Some(&self.base_tree as *const BaseTree);
@@ -128,13 +130,15 @@ impl<T> Grid<T> {
             USER_BASETREE = None;
         }
         self.update_ids();
+        self.update_ghosts();
     }
 
-    pub fn balance(&mut self) {
+    pub fn balance(&mut self) where T: Clone + Default {
         unsafe {
             p4est_sys::p4est_balance(self.grid, p4est_sys::p4est_connect_type_t_P4EST_CONNECT_FACE, None);
         }
         self.update_ids();
+        self.update_ghosts();
     }
 
 }
