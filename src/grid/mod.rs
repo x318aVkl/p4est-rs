@@ -162,6 +162,13 @@ impl<T> Grid<T> {
         }
     }
 
+    pub fn boundary_len(&self) -> usize {
+        self.base_tree.boundary_len()
+    }
+    pub fn boundary_name(&self, boundary: u16) -> &str {
+        self.base_tree.boundary_name(boundary)
+    }
+
 }
 
 
@@ -223,6 +230,7 @@ impl<T> Grid<T> {
 
         // we have the local offset for global id evaluation
         self.global_id_offset = self_offset;
+        user_data[0] = self.global_id_offset;
 
 
         unsafe {

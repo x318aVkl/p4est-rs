@@ -1,12 +1,14 @@
 use std::{collections::{HashMap, HashSet}, io::BufRead};
 
-use p4est_sys::consts::{CELL_CORNERS, CELL_FACES, DIM};
+use p4est_sys::consts::{CELL_CORNERS, CELL_FACES, DIM, FACE_CORNERS};
 
 mod basis;
 use basis::*;
 
 mod ordering;
 use ordering::reorder_raw_vtk_element;
+
+use crate::grid::corners::face_corner_ids;
 
 
 
@@ -17,6 +19,9 @@ pub struct BaseTree {
     nodes: Vec<[f64; DIM]>,
     elements: Vec<usize>,
     element_starts: Vec<usize>,
+
+    boundary_id_map: HashMap<[u32; 3], u16>,
+    boundary_names: Vec<String>,
 }
 
 
@@ -24,6 +29,7 @@ pub struct BaseTree {
 pub struct Element<'a> {
     all_nodes: &'a [[f64; DIM]],
     elem_nodes: &'a [usize],
+    boundary_id_map: &'a HashMap<[u32; 3], u16>,
 }
 
 
@@ -64,6 +70,31 @@ impl<'a> Element<'a> {
         }
 
         corners
+    }
+
+    pub fn faces_boundaries(&self) -> [Option<u16>; CELL_FACES] {
+        let mut result = [None; CELL_FACES];
+
+        let corners = self.corners();
+
+        for f in 0..CELL_FACES {
+            let cids = face_corner_ids(f as i8);
+
+            let mut face_nodes = [u32::MAX; FACE_CORNERS];
+            for i in 0..FACE_CORNERS {
+                face_nodes[i] = corners[cids[i] as usize] as u32;
+            }
+            face_nodes.sort();
+
+            let mut hash = [u32::MAX; 3];
+            for i in 0..face_nodes.len().min(3) {
+                hash[i] = face_nodes[i];
+            }
+
+            result[f] = self.boundary_id_map.get(&hash).cloned();
+        }
+
+        result
     }
 
 
@@ -193,11 +224,18 @@ impl BaseTree {
     pub fn element<'a>(&'a self, index: usize) -> Element<'a> {
         let ls = self.element_starts[index];
         let le = self.element_starts[index + 1];
-        Element { all_nodes: &self.nodes, elem_nodes: &self.elements[ls..le] }
+        Element { all_nodes: &self.nodes, elem_nodes: &self.elements[ls..le], boundary_id_map: &self.boundary_id_map }
     }
 
     pub fn element_len(&self) -> usize {
         self.element_starts.len() - 1
+    }
+
+    pub fn boundary_name(&self, boundary: u16) -> &str {
+        self.boundary_names[boundary as usize].as_str()
+    }
+    pub fn boundary_len(&self) -> usize {
+        self.boundary_names.len()
     }
 
 
@@ -206,6 +244,7 @@ impl BaseTree {
         let mut tree = Self::new();
 
         let mut section = "".to_string();
+        let mut current_marker_id = 0;
         for line in f.lines() {
             let line = line?;
 
@@ -219,10 +258,15 @@ impl BaseTree {
             if line.contains("=") {
                 let mut ls = line.split("= ");
                 section = ls.nth(0).unwrap().to_string();
-                let id = ls.nth(0).unwrap().parse::<usize>().unwrap();
 
                 if section == "NDIME" {
+                    let id = ls.nth(0).unwrap().parse::<usize>().unwrap();
                     assert_eq!(id, DIM);
+                }
+
+                if section == "MARKER_TAG" {
+                    let marker_name = ls.nth(0).unwrap();
+                    current_marker_id = tree.push_boundary(marker_name);
                 }
             } else {
 
@@ -265,6 +309,26 @@ impl BaseTree {
 
                     tree.push_node(node);
 
+                } else if section == "MARKER_ELEMS" {
+
+                    let mut ls = line.split(" ");
+                    let _elem_id = ls.nth(0).unwrap().parse::<u8>().unwrap();
+
+                    //#[cfg(feature = "2d")]
+                    //{ assert_eq!(elem_id, 9); }
+
+
+                    //#[cfg(feature = "3d")]
+                    //{ assert_eq!(elem_id, 12); }
+
+                    let mut elem = vec![];
+                    for value_str in ls {
+                        elem.push(
+                            value_str.parse().unwrap()
+                        );
+                    }
+
+                    tree.push_boundary_elem(&elem, current_marker_id);
                 }
 
             }
@@ -291,7 +355,10 @@ impl BaseTree {
         elements: vec![
             0, 1, 2, 3,
         ], 
-        element_starts: vec![0, 4] }
+        element_starts: vec![0, 4],
+        boundary_id_map: HashMap::new(),
+        boundary_names: vec!["default".to_string()],
+        }
     }
 
     #[cfg(feature = "3d")]
@@ -321,7 +388,7 @@ impl BaseTree {
 
     // Create a new empty base tree
     pub fn new() -> Self {
-        Self { nodes: vec![], elements: vec![], element_starts: vec![0] }
+        Self { nodes: vec![], elements: vec![], element_starts: vec![0], boundary_id_map: HashMap::new(), boundary_names: vec!["default".to_string()], }
     }
 
     // Add a node to a basetree
@@ -335,6 +402,34 @@ impl BaseTree {
         self.elements.extend(element);
         self.element_starts.push(self.elements.len());
         self.element_starts.len() - 2
+    }
+
+    pub fn push_boundary_elem(&mut self, nodes: &[usize], boundary: u16) {
+        let mut static_buffer = [usize::MAX; 32];
+        let mut dyn_buffer;
+        let buffer = if nodes.len() > 32 {
+            dyn_buffer = Some(vec![usize::MAX; nodes.len()]);
+            &mut dyn_buffer.as_mut().unwrap()[0..nodes.len()]
+        } else {
+            &mut static_buffer[0..nodes.len()]
+        };
+
+        for i in 0..nodes.len() {
+            buffer[i] = nodes[i];
+        }
+        buffer.sort();
+
+        let mut hash = [u32::MAX; 3];
+        for i in 0..buffer.len().min(3) {
+            hash[i] = buffer[i] as u32;
+        }
+
+        self.boundary_id_map.insert(hash, boundary);
+    }
+
+    pub fn push_boundary(&mut self, name: &str) -> u16 {
+        self.boundary_names.push(name.to_string());
+        (self.boundary_names.len() - 1) as u16
     }
 
 }
