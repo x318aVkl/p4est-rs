@@ -12,6 +12,7 @@ use ordering::reorder_raw_vtk_element;
 
 // A base tree that describes potentially high order elements
 // all elements are quads or hexahedra
+#[derive(Clone)]
 pub struct BaseTree {
     nodes: Vec<[f64; DIM]>,
     elements: Vec<usize>,

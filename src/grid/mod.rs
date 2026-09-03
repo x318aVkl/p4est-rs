@@ -284,3 +284,29 @@ extern "C" fn iter_volume_update_ids_fn<T>(info: *mut p4est_sys::p4est_iter_volu
 
 }
 
+
+
+
+impl<T> Clone for Grid<T> where T: Clone {
+    fn clone(&self) -> Self {
+        let p4est = unsafe {p4est_sys::p4est_copy(self.grid, 1)};
+        let ghosts = if self.ghosts == std::ptr::null_mut() {
+            std::ptr::null_mut()
+        } else {
+            unsafe {p4est_sys::p4est_ghost_new(p4est, p4est_sys::p4est_connect_type_t_P4EST_CONNECT_FACE)}
+        };
+        let ghost_data = self.ghost_data.clone();
+        Self {
+            base_tree: self.base_tree.clone(),
+            communicator: self.communicator.duplicate(),
+            connectivity: unsafe {p4est_sys::p4est_connectivity_copy(self.connectivity, 1)},
+            grid: p4est,
+            ghosts,
+            ghost_data,
+            global_id_offset: self.global_id_offset,
+            pt: PhantomData,
+        }
+    }
+}
+
+
