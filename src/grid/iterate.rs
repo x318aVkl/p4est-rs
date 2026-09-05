@@ -237,6 +237,10 @@ extern "C" fn iter_face_fn<'a, F, T>(info: *mut p4est_sys::p4est_iter_face_info,
                     let (quad_0, q0id, s0tid, is_ghost_0) = quads_0[i].unwrap();
                     let (quad_1, q1id, s1tid, is_ghost_1) = quads_1[j].unwrap();
 
+                    if quad_0.is_null() | quad_1.is_null() {
+                        continue;
+                    }
+
                     let (corners0, corners_int_0) = cell_corners(geom,  (*side0).treeid, quad_0 as *mut p4est_sys::p4est_quadrant);
                     let (corners1, corners_int_1) = cell_corners(geom,  (*side1).treeid, quad_1 as *mut p4est_sys::p4est_quadrant);
 
