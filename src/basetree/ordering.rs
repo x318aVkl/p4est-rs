@@ -1,4 +1,4 @@
-use p4est_sys::consts::DIM;
+use p4est_sys::consts::{DIM, FACE_CORNERS};
 
 
 
@@ -176,4 +176,49 @@ pub fn reorder_raw_vtk_element(
     result
 }
 
+
+pub fn vtk_face_corners(
+    face: &[usize]
+) -> [usize; FACE_CORNERS] {
+
+    let mut out = [usize::MAX; FACE_CORNERS];
+
+    let order = (((face.len() as f64).powf(1.0 / ((DIM-1) as f64))).round() as usize) - 1;
+
+    if order == 1 {
+        for i in 0..face.len() {
+            out[i] = face[i];
+        }
+    } else if order == 2 {
+        #[cfg(feature = "2d")]
+        {
+            out[0] = face[0];
+            out[1] = face[1];
+        }
+        #[cfg(feature = "3d")]
+        {
+            out[0] = face[0];
+            out[1] = face[1];
+            out[2] = face[2];
+            out[3] = face[3];
+        }
+    } else if order == 3 {
+        #[cfg(feature = "2d")]
+        {
+            out[0] = face[0];
+            out[1] = face[1];
+        }
+        #[cfg(feature = "3d")]
+        {
+            out[0] = face[0];
+            out[1] = face[1];
+            out[2] = face[2];
+            out[3] = face[3];
+        }
+    } else {
+        panic!("Unsupported tree element order {}, must be >= 1 and <= 3", order);
+    }
+
+    out
+}
 

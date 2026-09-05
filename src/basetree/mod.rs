@@ -8,7 +8,7 @@ use basis::*;
 mod ordering;
 use ordering::reorder_raw_vtk_element;
 
-use crate::grid::corners::face_corner_ids;
+use crate::{basetree::ordering::vtk_face_corners, grid::corners::face_corner_ids};
 
 
 
@@ -408,23 +408,13 @@ impl BaseTree {
     }
 
     pub fn push_boundary_elem(&mut self, nodes: &[usize], boundary: u16) {
-        let mut static_buffer = [usize::MAX; 32];
-        let mut dyn_buffer;
-        let buffer = if nodes.len() > 32 {
-            dyn_buffer = Some(vec![usize::MAX; nodes.len()]);
-            &mut dyn_buffer.as_mut().unwrap()[0..nodes.len()]
-        } else {
-            &mut static_buffer[0..nodes.len()]
-        };
+        let mut corners = vtk_face_corners(nodes);
 
-        for i in 0..nodes.len() {
-            buffer[i] = nodes[i];
-        }
-        buffer.sort();
+        corners.sort();
 
         let mut hash = [u32::MAX; 3];
-        for i in 0..buffer.len().min(3) {
-            hash[i] = buffer[i] as u32;
+        for i in 0..corners.len().min(3) {
+            hash[i] = corners[i] as u32;
         }
 
         self.boundary_id_map.insert(hash, boundary);
