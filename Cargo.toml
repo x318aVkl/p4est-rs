@@ -15,7 +15,7 @@ codegen-units = 256
 
 
 [features]
-default = ["2d"]
+default = []
 2d = ["p4est-sys/2d"]
 3d = ["p4est-sys/3d"]
 

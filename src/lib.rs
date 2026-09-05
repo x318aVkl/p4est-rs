@@ -6,6 +6,9 @@ pub mod basetree;
 
 pub mod consts {
     pub use p4est_sys::consts::DIM;
+    pub use p4est_sys::consts::CELL_CORNERS;
+    pub use p4est_sys::consts::FACE_CORNERS;
+    pub use p4est_sys::consts::CELL_FACES;
 }
 
 pub mod env {
