@@ -88,30 +88,77 @@ unsafe {
                 // new quadrant are refined from the old one, use refine function to determine the new quadrant data
     
                 #[allow(invalid_reference_casting)]
-                refining_function(
-                    (
-                        Cell::from_quad(&old_mesh.base_tree, tt, pquad),
-                        &old_data[(*((*pquad).p.user_data as *mut CellData<T>)).local_id as usize],
-                    ),
-                    [
+                #[cfg(feature = "2d")]
+                {
+                    refining_function(
                         (
-                            Cell::from_quad(&new_mesh.base_tree, tt, nquad.offset(0)),
-                            &mut *(&new_data[(*((*nquad.offset(0)).p.user_data as *mut CellData<T>)).local_id as usize] as *const V as *mut V),
+                            Cell::from_quad(&old_mesh.base_tree, tt, pquad),
+                            &old_data[(*((*pquad).p.user_data as *mut CellData<T>)).local_id as usize],
                         ),
+                        [
+                            (
+                                Cell::from_quad(&new_mesh.base_tree, tt, nquad.offset(0)),
+                                &mut *(&new_data[(*((*nquad.offset(0)).p.user_data as *mut CellData<T>)).local_id as usize] as *const V as *mut V),
+                            ),
+                            (
+                                Cell::from_quad(&new_mesh.base_tree, tt, nquad.offset(1)),
+                                &mut *(&new_data[(*((*nquad.offset(1)).p.user_data as *mut CellData<T>)).local_id as usize] as *const V as *mut V),
+                            ),
+                            (
+                                Cell::from_quad(&new_mesh.base_tree, tt, nquad.offset(2)),
+                                &mut *(&new_data[(*((*nquad.offset(2)).p.user_data as *mut CellData<T>)).local_id as usize] as *const V as *mut V),
+                            ),
+                            (
+                                Cell::from_quad(&new_mesh.base_tree, tt, nquad.offset(3)),
+                                &mut *(&new_data[(*((*nquad.offset(3)).p.user_data as *mut CellData<T>)).local_id as usize] as *const V as *mut V),
+                            ),
+                        ]
+                    );
+                }
+                #[allow(invalid_reference_casting)]
+                #[cfg(feature = "3d")]
+                {
+                    refining_function(
                         (
-                            Cell::from_quad(&new_mesh.base_tree, tt, nquad.offset(1)),
-                            &mut *(&new_data[(*((*nquad.offset(1)).p.user_data as *mut CellData<T>)).local_id as usize] as *const V as *mut V),
+                            Cell::from_quad(&old_mesh.base_tree, tt, pquad),
+                            &old_data[(*((*pquad).p.user_data as *mut CellData<T>)).local_id as usize],
                         ),
-                        (
-                            Cell::from_quad(&new_mesh.base_tree, tt, nquad.offset(2)),
-                            &mut *(&new_data[(*((*nquad.offset(2)).p.user_data as *mut CellData<T>)).local_id as usize] as *const V as *mut V),
-                        ),
-                        (
-                            Cell::from_quad(&new_mesh.base_tree, tt, nquad.offset(3)),
-                            &mut *(&new_data[(*((*nquad.offset(3)).p.user_data as *mut CellData<T>)).local_id as usize] as *const V as *mut V),
-                        ),
-                    ]
-                );
+                        [
+                            (
+                                Cell::from_quad(&new_mesh.base_tree, tt, nquad.offset(0)),
+                                &mut *(&new_data[(*((*nquad.offset(0)).p.user_data as *mut CellData<T>)).local_id as usize] as *const V as *mut V),
+                            ),
+                            (
+                                Cell::from_quad(&new_mesh.base_tree, tt, nquad.offset(1)),
+                                &mut *(&new_data[(*((*nquad.offset(1)).p.user_data as *mut CellData<T>)).local_id as usize] as *const V as *mut V),
+                            ),
+                            (
+                                Cell::from_quad(&new_mesh.base_tree, tt, nquad.offset(2)),
+                                &mut *(&new_data[(*((*nquad.offset(2)).p.user_data as *mut CellData<T>)).local_id as usize] as *const V as *mut V),
+                            ),
+                            (
+                                Cell::from_quad(&new_mesh.base_tree, tt, nquad.offset(3)),
+                                &mut *(&new_data[(*((*nquad.offset(3)).p.user_data as *mut CellData<T>)).local_id as usize] as *const V as *mut V),
+                            ),
+                            (
+                                Cell::from_quad(&new_mesh.base_tree, tt, nquad.offset(4)),
+                                &mut *(&new_data[(*((*nquad.offset(4)).p.user_data as *mut CellData<T>)).local_id as usize] as *const V as *mut V),
+                            ),
+                            (
+                                Cell::from_quad(&new_mesh.base_tree, tt, nquad.offset(5)),
+                                &mut *(&new_data[(*((*nquad.offset(5)).p.user_data as *mut CellData<T>)).local_id as usize] as *const V as *mut V),
+                            ),
+                            (
+                                Cell::from_quad(&new_mesh.base_tree, tt, nquad.offset(6)),
+                                &mut *(&new_data[(*((*nquad.offset(6)).p.user_data as *mut CellData<T>)).local_id as usize] as *const V as *mut V),
+                            ),
+                            (
+                                Cell::from_quad(&new_mesh.base_tree, tt, nquad.offset(7)),
+                                &mut *(&new_data[(*((*nquad.offset(7)).p.user_data as *mut CellData<T>)).local_id as usize] as *const V as *mut V),
+                            ),
+                        ]
+                    );
+                }
 
                 nquad = nquad.add(CELL_CORNERS);
                 ntraverse += CELL_CORNERS;
@@ -122,30 +169,77 @@ unsafe {
                 // new quadrant is coarsened from the old one, use coarsening function
 
                 #[allow(invalid_reference_casting)]
-                coarsening_function(
-                    [
+                #[cfg(feature = "2d")]
+                {
+                    coarsening_function(
+                        [
+                            (
+                                Cell::from_quad(&old_mesh.base_tree, tt, pquad.offset(0)),
+                                &old_data[(*((*pquad.offset(0)).p.user_data as *mut CellData<T>)).local_id as usize],
+                            ),
+                            (
+                                Cell::from_quad(&old_mesh.base_tree, tt, pquad.offset(1)),
+                                &old_data[(*((*pquad.offset(1)).p.user_data as *mut CellData<T>)).local_id as usize],
+                            ),
+                            (
+                                Cell::from_quad(&old_mesh.base_tree, tt, pquad.offset(2)),
+                                &old_data[(*((*pquad.offset(2)).p.user_data as *mut CellData<T>)).local_id as usize],
+                            ),
+                            (
+                                Cell::from_quad(&old_mesh.base_tree, tt, pquad.offset(3)),
+                                &old_data[(*((*pquad.offset(3)).p.user_data as *mut CellData<T>)).local_id as usize],
+                            ),
+                        ],
                         (
-                            Cell::from_quad(&old_mesh.base_tree, tt, pquad.offset(0)),
-                            &old_data[(*((*pquad.offset(0)).p.user_data as *mut CellData<T>)).local_id as usize],
+                            Cell::from_quad(&new_mesh.base_tree, tt, nquad),
+                            &mut new_data[(*((*nquad).p.user_data as *mut CellData<T>)).local_id as usize],
                         ),
+                    );
+                }
+                #[allow(invalid_reference_casting)]
+                #[cfg(feature = "3d")]
+                {
+                    coarsening_function(
+                        [
+                            (
+                                Cell::from_quad(&old_mesh.base_tree, tt, pquad.offset(0)),
+                                &old_data[(*((*pquad.offset(0)).p.user_data as *mut CellData<T>)).local_id as usize],
+                            ),
+                            (
+                                Cell::from_quad(&old_mesh.base_tree, tt, pquad.offset(1)),
+                                &old_data[(*((*pquad.offset(1)).p.user_data as *mut CellData<T>)).local_id as usize],
+                            ),
+                            (
+                                Cell::from_quad(&old_mesh.base_tree, tt, pquad.offset(2)),
+                                &old_data[(*((*pquad.offset(2)).p.user_data as *mut CellData<T>)).local_id as usize],
+                            ),
+                            (
+                                Cell::from_quad(&old_mesh.base_tree, tt, pquad.offset(3)),
+                                &old_data[(*((*pquad.offset(3)).p.user_data as *mut CellData<T>)).local_id as usize],
+                            ),
+                            (
+                                Cell::from_quad(&old_mesh.base_tree, tt, pquad.offset(4)),
+                                &old_data[(*((*pquad.offset(4)).p.user_data as *mut CellData<T>)).local_id as usize],
+                            ),
+                            (
+                                Cell::from_quad(&old_mesh.base_tree, tt, pquad.offset(5)),
+                                &old_data[(*((*pquad.offset(5)).p.user_data as *mut CellData<T>)).local_id as usize],
+                            ),
+                            (
+                                Cell::from_quad(&old_mesh.base_tree, tt, pquad.offset(6)),
+                                &old_data[(*((*pquad.offset(6)).p.user_data as *mut CellData<T>)).local_id as usize],
+                            ),
+                            (
+                                Cell::from_quad(&old_mesh.base_tree, tt, pquad.offset(7)),
+                                &old_data[(*((*pquad.offset(7)).p.user_data as *mut CellData<T>)).local_id as usize],
+                            ),
+                        ],
                         (
-                            Cell::from_quad(&old_mesh.base_tree, tt, pquad.offset(1)),
-                            &old_data[(*((*pquad.offset(1)).p.user_data as *mut CellData<T>)).local_id as usize],
+                            Cell::from_quad(&new_mesh.base_tree, tt, nquad),
+                            &mut new_data[(*((*nquad).p.user_data as *mut CellData<T>)).local_id as usize],
                         ),
-                        (
-                            Cell::from_quad(&old_mesh.base_tree, tt, pquad.offset(2)),
-                            &old_data[(*((*pquad.offset(2)).p.user_data as *mut CellData<T>)).local_id as usize],
-                        ),
-                        (
-                            Cell::from_quad(&old_mesh.base_tree, tt, pquad.offset(3)),
-                            &old_data[(*((*pquad.offset(3)).p.user_data as *mut CellData<T>)).local_id as usize],
-                        ),
-                    ],
-                    (
-                        Cell::from_quad(&new_mesh.base_tree, tt, nquad),
-                        &mut new_data[(*((*nquad).p.user_data as *mut CellData<T>)).local_id as usize],
-                    ),
-                );
+                    );
+                }
 
                 nquad = nquad.add(1);
                 ntraverse += 1;
